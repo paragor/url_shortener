@@ -45,10 +45,18 @@ var (
 	listenAddr     = flag.String("listen-addr", ":8080", "listen addr")
 	diagnosticAddr = flag.String("diagnostic-addr", ":7070", "diagnostic addr")
 
-	mysqlDsn = flag.String("mysql-dsn", "user:password@127.0.0.1:3306/dbname?parseTime=true", "diagnostic addr")
+	mysqlDsn = flag.String("mysql-dsn", envWithDefault("MYSQL_DSN", "user:password@tcp(127.0.0.1:3306)/dbname?parseTime=true"), "mysql dsn (env MYSQL_DSN)")
 
 	runMigrations = flag.Bool("run-migration", false, "run migrations")
 )
+
+func envWithDefault(name string, defaultValue string) string {
+	value := os.Getenv(name)
+	if value == "" {
+		return defaultValue
+	}
+	return value
+}
 
 func main() {
 	logLevel := getLogLevel()
@@ -58,7 +66,7 @@ func main() {
 	db, err := sql.Open("mysql", *mysqlDsn)
 	defer db.Close()
 	if err != nil {
-		panic(err)
+		log.With(zap.Error(err)).Fatal("invalid dsn")
 	}
 	if err := db.Ping(); err != nil {
 		log.With(zap.Error(err)).Fatal("database is not respond")
